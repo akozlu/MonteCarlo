@@ -55,7 +55,54 @@ create_distance_matrix <- function(row_number,col_number,car_CIDS,pasenger_PIDs,
   }
   return(dist.matrix)
 }
-# buraya paste et 
+
+
+
+dist.matrix <- create_distance_matrix(12,12,car_CIDs,passenger_PIDs,passenger.list,cars.list)
+# Get the closest car with the distance to each paasenger
+calculate_shortest_car <- function(row_number) {
+  j <- which.min(dist.matrix[row_number,]) # get the lowest distance o
+  return(c(paste(rownames(dist.matrix)[row_number], colnames(dist.matrix)[j], sep=' '), dist.matrix[row_number,j]))
+}
+shortest_distance_vector <- t(sapply(seq(nrow(dist.matrix)), function(x) calculate_shortest_car(x)))
+
+# Get the closest car and distance to each passenger 
+car_passenger1 <-unlist(lapply(shortest_distance_vector[1,1], (strsplit), " "))
+print(paste("For passenger 1, the CID of shortest car is ",car_passenger1[2],
+            ".The distance is ",shortest_distance_vector[1,2]))
+
+fm <- lp.assign(dist.matrix)
+solution <- fm$solution
+
+# MONTE CARLO SIMULATION PART 1 
+num.its <- 10000 # set the number of iterations
+results.container <-
+  rep(NA,num.its)# A container to store the results of each iteration
+for (i in 1:num.its) { #Start the simulation
+  total_distance <- 0 
+  print(paste("We are on iteration number",i))
+  p.list<-replicate(12,list(newpass())) # create a new passenger list
+  c.list<-replicate(12,list(newcar())) # create a new car list
+  passenger_PIDs <- unlist(lapply(p.list, function(x) (x$PID))) # get Passenger ID's for row names of our matrix 
+  car_CIDs <- unlist(lapply(c.list, function(x) (x$CID)))# get Car ID's for column names of our matrix 
+  distance.matrix <- create_distance_matrix(12,12,car_CIDs,passenger_PIDs,p.list,c.list) # Create our distance matrix 
+  fm <- lp.assign(distance.matrix)
+  matrix_positions <- which(round(fm$solution) == 1,arr.ind =TRUE) # get the matrix positions of (Passenger,Car) pairs. 
+  for(row in 1:nrow(matrix_positions)) { # for each position
+    position<- matrix_positions[row,]
+    r <- position[1] # get row of matrix position in fm$solution
+    col <- position[2] # get column of matrix position in fm$solution
+    c_id <- colnames(distance.matrix)[col] # get the car id corresponding to that column in distance.matrix
+    p_id <- rownames(distance.matrix)[r]# get the passenger id corresponding to that row in distance.matrix
+    distance <- distance.matrix[r,col] # get the distance from that 
+    total_distance <- total_distance + distance # Accumulate distances between passenger and car
+    
+  }
+  results.container <- (total_distance / 12) # record the average distance (waiting time)
+}
+print(paste("The average waiting time for 12 passengers was",mean(results.container),'.'))
+
+
 # MONTE CARLO SIMULATION PART 2
 num.its <- 10000 # set the number of iterations
 results.container <-
